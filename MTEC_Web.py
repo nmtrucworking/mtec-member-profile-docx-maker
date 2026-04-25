@@ -220,43 +220,71 @@ if excel_file and template_file:
             st.error(f"❌ Lỗi đọc dữ liệu: {e}")
             st.stop()
             
+        # Thêm phần Dashboard Mini thống kê nhanh dữ liệu vừa up lên
+        st.markdown("### 📊 Tổng quan dữ liệu")
+        metric_col1, metric_col2, metric_col3 = st.columns(3)
+        with metric_col1:
+            st.metric(label="Tổng số hồ sơ", value=f"{len(df)} người")
+        with metric_col2:
+            st.metric(label="Số cột dữ liệu", value=f"{len(df.columns)} cột")
+        with metric_col3:
+            mssv_count = df['Mã số sinh viên (MSSV)'].notna().sum() if 'Mã số sinh viên (MSSV)' in df.columns else 0
+            st.metric(label="Mã số sinh viên hợp lệ", value=f"{mssv_count}")
+            
     st.divider()
 
     st.subheader("2️⃣ Thiết lập & Xử lý")
     tab_preview, tab_generate = st.tabs(["👁️ Xem trước 1 File", "🚀 Xuất hàng loạt ZIP"])
     
     with tab_preview:
-        st.info("Hãy thử tạo bản xem trước cho 1 cá nhân bất kỳ để định dạng lỗi trước khi xuất hàng loạt.")
-        sample_index = st.number_input("Chọn STT (số dòng) để xem trước:", min_value=0, max_value=len(df)-1, value=0)
-        if st.button("🔄 Tạo xem trước ngay", key="preview_btn"):
-            try:
-                row = df.iloc[[sample_index]].copy()
-                processed_row = process_mtec_data_v2(row).iloc[0]
-                context = processed_row.to_dict()
-                
-                for field in formating_columns:
-                    if field in context:
-                        context[field] = format_[field](context[field])
+        st.info("💡 Hãy thử tạo bản xem trước cho 1 cá nhân bất kỳ. Bạn cũng có thể xem dữ liệu đã được 'nhào nặn' trước khi ép vào file Word để biết chắc các biến `{ }` không bị thiếu.")
+        sample_index = st.number_input("Chọn thứ tự người để xem trước (Bắt đầu từ 0):", min_value=0, max_value=len(df)-1, value=0)
+        
+        col_btn_1, col_btn_2 = st.columns(2)
+        
+        with col_btn_1:
+            show_data_dict = st.button("🔍 Xem dữ liệu Mapping (Dictionary)")
+            
+        with col_btn_2:
+            generate_preview = st.button("🔄 Khởi tạo File Xem trước (*.docx)", key="preview_btn")
+            
+        try:
+            row = df.iloc[[sample_index]].copy()
+            processed_row = process_mtec_data_v2(row).iloc[0]
+            context = processed_row.to_dict()
+            
+            for field in formating_columns:
+                if field in context:
+                    context[field] = format_[field](context[field])
+                    
+            # Xóa các object type đặc biệt để in JSON ra cho UI đẹp hơn
+            clean_context_for_json = {k: v for k, v in context.items() if not isinstance(v, RichText)}
 
+            if show_data_dict:
+                st.markdown("#### 🛠️ Các biến trúng tuyển (Sẽ áp dụng vào `{{ biến }}` trong Word)")
+                st.json(clean_context_for_json, expanded=False)
+
+            if generate_preview:
                 doc = DocxTemplate(template_file)
                 doc.render(context)
                 
                 doc_io = io.BytesIO()
                 doc.save(doc_io)
                 
-                st.success(f"🎉 Đã tạo thành công bản xem trước cho dòng {sample_index}.")
+                st.success(f"🎉 Đã tạo thành công bản xem trước cho **'{clean_context_for_json.get('ho_ten', 'Unknown')}'**.")
                 st.download_button(
                     label="📥 Tải xuống File Xem Trước",
                     data=doc_io.getvalue(),
-                    file_name=f"Preview_Row{sample_index}.docx",
+                    file_name=f"Preview_{clean_context_for_json.get('mssv', 'Unknown')}.docx",
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     key="preview_download"
                 )
-            except Exception as e:
-                st.error(f"❌ Lỗi tạo file xem trước: {e}")
-
+        except Exception as e:
+            if generate_preview:
+                st.error(f"❌ Lỗi khởi tạo: Có thể Template Word thiếu/sai Object. Chi tiết lỗi: {e}")
+                
     with tab_generate:
-        st.warning("Việc tạo hàng chục/trăm file cùng lúc có thể mất từ vài giây đến một phút.")
+        st.warning("⚡ Việc tạo hàng chục/trăm file cùng lúc có thể mất từ vài giây đến một phút.")
         if st.button("🚀 Bắt đầu Khởi Tạo & Xuất ZIP", type="primary", use_container_width=True):
             progress_text = "Đang xử lý dữ liệu..."
             my_bar = st.progress(0, text=progress_text)

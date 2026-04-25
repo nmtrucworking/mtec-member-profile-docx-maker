@@ -116,60 +116,95 @@ def process_mtec_data_v2(df):
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("MTEC Hồ Sơ Generator")
-        self.geometry("700x520")
-        self.grid_columnconfigure(1, weight=1)
-        self.grid_rowconfigure(5, weight=1) # Dời grid
+        self.title("MTEC Hồ Sơ Generator - Desktop")
+        self.geometry("750x650")
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(2, weight=1) 
 
-        # Thêm Banner ảnh
+        # --- Thêm Banner ảnh ---
         try:
             banner_image = ctk.CTkImage(
                 light_image=Image.open("branding/mtec-banner-fb-2026.png"),
                 dark_image=Image.open("branding/mtec-banner-fb-2026.png"),
-                size=(350, 130)  # Thu nhỏ tỉ lệ
+                size=(400, 150)
             )
             self.lbl_banner = ctk.CTkLabel(self, image=banner_image, text="")
-            self.lbl_banner.grid(row=0, column=0, columnspan=3, pady=(10, 0))
-            self.lbl_title = ctk.CTkLabel(self, text="MTEC Document Generator", font=ctk.CTkFont(size=18, weight="bold"), text_color="#ffc20e")
-            self.lbl_title.grid(row=1, column=0, columnspan=3, padx=20, pady=(5, 10))
+            self.lbl_banner.grid(row=0, column=0, pady=(15, 0))
+            self.lbl_title = ctk.CTkLabel(self, text="MTEC DESTKOP GENERATOR", font=ctk.CTkFont(size=22, weight="bold"), text_color="#ffc20e")
+            self.lbl_title.grid(row=1, column=0, pady=(5, 10))
         except Exception:
-            self.lbl_title = ctk.CTkLabel(self, text="MTEC Document Generator", font=ctk.CTkFont(size=20, weight="bold"), text_color="#ffc20e")
-            self.lbl_title.grid(row=0, column=0, columnspan=3, padx=20, pady=(20, 10))
+            self.lbl_title = ctk.CTkLabel(self, text="MTEC DOCUMENT GENERATOR", font=ctk.CTkFont(size=24, weight="bold"), text_color="#ffc20e")
+            self.lbl_title.grid(row=0, column=0, pady=(20, 10))
 
-        self.lbl_excel = ctk.CTkLabel(self, text="Data File (.csv, .xlsx):")
-        self.lbl_excel.grid(row=2, column=0, padx=20, pady=5, sticky="w")
-        self.ent_excel = ctk.CTkEntry(self, placeholder_text="Select your data source...")
-        self.ent_excel.grid(row=2, column=1, padx=10, pady=5, sticky="ew")
-        self.btn_excel = ctk.CTkButton(self, text="Browse", width=80, fg_color="#ffc20e", text_color="#061932", hover_color="#ffd859", command=self.browse_excel)
-        self.btn_excel.grid(row=2, column=2, padx=20, pady=5)
+        # --- Frame Nhập liệu (Input Card) ---
+        self.input_frame = ctk.CTkFrame(self, fg_color="#0a1f3f", corner_radius=10, border_width=1, border_color="#1a3c6d")
+        self.input_frame.grid(row=2, column=0, padx=25, pady=(5, 10), sticky="nsew")
+        self.input_frame.grid_columnconfigure(1, weight=1)
 
-        self.lbl_template = ctk.CTkLabel(self, text="Word Template (.docx):")
-        self.lbl_template.grid(row=3, column=0, padx=20, pady=5, sticky="w")
-        self.ent_template = ctk.CTkEntry(self, placeholder_text="Select your .docx template...")
-        self.ent_template.grid(row=3, column=1, padx=10, pady=5, sticky="ew")
-        self.btn_template = ctk.CTkButton(self, text="Browse", width=80, fg_color="#ffc20e", text_color="#061932", hover_color="#ffd859", command=self.browse_template)
-        self.btn_template.grid(row=3, column=2, padx=20, pady=5)
+        self.lbl_excel = ctk.CTkLabel(self.input_frame, text="📄 Data File (.csv, .xlsx):", font=ctk.CTkFont(weight="bold"))
+        self.lbl_excel.grid(row=0, column=0, padx=15, pady=10, sticky="w")
+        self.ent_excel = ctk.CTkEntry(self.input_frame, placeholder_text="Select your data source...")
+        self.ent_excel.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
+        self.btn_excel = ctk.CTkButton(self.input_frame, text="Browse", width=90, fg_color="#ffc20e", text_color="#061932", hover_color="#ffd859", command=self.browse_excel)
+        self.btn_excel.grid(row=0, column=2, padx=15, pady=10)
 
-        self.lbl_output = ctk.CTkLabel(self, text="Output Folder:")
-        self.lbl_output.grid(row=4, column=0, padx=20, pady=5, sticky="w")
-        self.ent_output = ctk.CTkEntry(self, placeholder_text="Select destination folder...")
-        self.ent_output.grid(row=4, column=1, padx=10, pady=5, sticky="ew")
-        self.btn_output = ctk.CTkButton(self, text="Browse", width=80, fg_color="#ffc20e", text_color="#061932", hover_color="#ffd859", command=self.browse_output)
-        self.btn_output.grid(row=4, column=2, padx=20, pady=5)
+        self.lbl_template = ctk.CTkLabel(self.input_frame, text="📝 Word Template (.docx):", font=ctk.CTkFont(weight="bold"))
+        self.lbl_template.grid(row=1, column=0, padx=15, pady=10, sticky="w")
+        self.ent_template = ctk.CTkEntry(self.input_frame, placeholder_text="Select your .docx template...")
+        self.ent_template.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
+        self.btn_template = ctk.CTkButton(self.input_frame, text="Browse", width=90, fg_color="#ffc20e", text_color="#061932", hover_color="#ffd859", command=self.browse_template)
+        self.btn_template.grid(row=1, column=2, padx=15, pady=10)
 
-        self.log_box = ctk.CTkTextbox(self, corner_radius=8, fg_color="#102a4f", text_color="white")
-        self.log_box.grid(row=5, column=0, columnspan=3, padx=20, pady=10, sticky="nsew")
-        self.log_box.insert("0.0", "Logs and progress will appear here...\n")
+        self.lbl_output = ctk.CTkLabel(self.input_frame, text="📁 Output Folder:", font=ctk.CTkFont(weight="bold"))
+        self.lbl_output.grid(row=2, column=0, padx=15, pady=10, sticky="w")
+        self.ent_output = ctk.CTkEntry(self.input_frame, placeholder_text="Select destination folder...")
+        self.ent_output.grid(row=2, column=1, padx=10, pady=10, sticky="ew")
+        self.btn_output = ctk.CTkButton(self.input_frame, text="Browse", width=90, fg_color="#ffc20e", text_color="#061932", hover_color="#ffd859", command=self.browse_output)
+        self.btn_output.grid(row=2, column=2, padx=15, pady=10)
+
+        # --- Frame Log & Progress (Output Card) ---
+        self.log_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.log_frame.grid(row=3, column=0, padx=25, pady=5, sticky="nsew")
+        self.log_frame.grid_columnconfigure(0, weight=1)
+
+        self.lbl_progress = ctk.CTkLabel(self.log_frame, text="Tiến độ thực hiện: 0%", font=ctk.CTkFont(weight="bold"))
+        self.lbl_progress.grid(row=0, column=0, padx=5, pady=(0, 5), sticky="w")
+        
+        self.progress_bar = ctk.CTkProgressBar(self.log_frame, progress_color="#ffc20e", fg_color="#1a3c6d", height=12)
+        self.progress_bar.grid(row=1, column=0, padx=5, pady=(0, 10), sticky="ew")
+        self.progress_bar.set(0.0)
+
+        self.log_box = ctk.CTkTextbox(self.log_frame, corner_radius=8, fg_color="#102a4f", text_color="white", height=120)
+        self.log_box.grid(row=2, column=0, padx=5, pady=5, sticky="nsew")
+        self.log_box.insert("0.0", "Hệ thống đã sẵn sàng...\n")
         self.log_box.configure(state="disabled")
 
-        self.btn_generate = ctk.CTkButton(self, text="Generate Documents", height=45, font=ctk.CTkFont(size=14, weight="bold"), fg_color="#ffc20e", text_color="#061932", hover_color="#ffd859", command=self.start_generation)
-        self.btn_generate.grid(row=6, column=0, columnspan=3, padx=20, pady=(10, 20), sticky="ew")
+        # --- Nút Hành động ---
+        self.btn_generate = ctk.CTkButton(
+            self, 
+            text="🚀 Bắt đầu Khởi tạo Documents", 
+            height=50, 
+            font=ctk.CTkFont(size=16, weight="bold"), 
+            fg_color="#ffc20e", text_color="#061932", hover_color="#ffd859", 
+            command=self.start_generation
+        )
+        self.btn_generate.grid(row=4, column=0, padx=25, pady=(10, 20), sticky="ew")
 
     def log(self, message):
+        self.after(0, self._sync_log, message)
+
+    def _sync_log(self, message):
         self.log_box.configure(state="normal")
         self.log_box.insert("end", message + "\n")
         self.log_box.see("end")
         self.log_box.configure(state="disabled")
+        
+    def update_progress(self, current, total):
+        def _sync_progress():
+            percent = current / total if total > 0 else 0
+            self.progress_bar.set(percent)
+            self.lbl_progress.configure(text=f"Tiến độ thực hiện: {int(percent * 100)}% ({current}/{total})")
+        self.after(0, _sync_progress)
 
     def browse_excel(self):
         filename = filedialog.askopenfilename(filetypes=[("Data Files", "*.csv;*.xlsx"), ("All Files", "*.*")])
@@ -195,11 +230,13 @@ class App(ctk.CTk):
         output_dir = self.ent_output.get()
 
         if not os.path.exists(excel_file) or not os.path.exists(template_file) or not output_dir:
-            self.log("ERROR: Please select valid files and an output directory.")
+            self.log("❌ LỖI: Vui lòng chọn đầy đủ file nguồn, template và thư mục đầu ra hợp lệ.")
             return
 
-        self.btn_generate.configure(state="disabled", text="Generating...")
-        self.log("--- Starting Generation ---")
+        self.btn_generate.configure(state="disabled", text="⏳ Đang khởi tạo, vui lòng đợi...")
+        self.progress_bar.set(0.0)
+        self.lbl_progress.configure(text="Phân tích dữ liệu...")
+        self.log("--- BẮT ĐẦU CHƯƠNG TRÌNH ---")
         threading.Thread(target=self.generate_docs, args=(excel_file, template_file, output_dir), daemon=True).start()
 
     def generate_docs(self, excel_file, template_file, output_dir):
@@ -209,33 +246,48 @@ class App(ctk.CTk):
             else:
                 df = pd.read_excel(excel_file, dtype={'Số điện thoại liên hệ': str, 'Mã số sinh viên (MSSV)': str})
 
+            self.log(f"✅ Đã tải dữ liệu, bắt đầu chuẩn hóa ({len(df)} dòng)...")
             df = process_mtec_data_v2(df)
             os.makedirs(output_dir, exist_ok=True)
+            
+            total_docs = len(df)
             success_count = 0
+            fail_count = 0
 
             for index, row in df.iterrows():
-                context = row.to_dict()
-                for field in formating_columns:
-                    if field in context:
-                        context[field] = format_[field](context[field])
+                try:
+                    context = row.to_dict()
+                    for field in formating_columns:
+                        if field in context:
+                            context[field] = format_[field](context[field])
 
-                doc = DocxTemplate(template_file)
-                doc.render(context)
+                    doc = DocxTemplate(template_file)
+                    doc.render(context)
 
-                mssv = context.get('mssv', 'Unknown_MSSV')
-                ho_ten = context.get('ho_ten', f'Unknown_Name_{index}')
-                filename = f"HOSO_{mssv}_{ho_ten}.docx".replace(" ", "_")
+                    mssv = context.get('mssv', 'Unknown_MSSV')
+                    ho_ten = context.get('ho_ten', f'Unknown_Name_{index}')
+                    filename = f"HOSO_{mssv}_{ho_ten}.docx".replace(" ", "_")
+                    
+                    output_file = os.path.join(output_dir, filename)
+                    doc.save(output_file)
+                    self.log(f"  Thành công ➔ {filename}")
+                    success_count += 1
+                except Exception as e:
+                    self.log(f"  ❌ Lỗi tại dòng {index+1}: {str(e)}")
+                    fail_count += 1
+                    
+                # Update progress tracking
+                self.update_progress(index + 1, total_docs)
+
+            if success_count > 0:
+                self.log(f"\n🎉 HOÀN TẤT! Đã tạo thành công: {success_count} file | Thất bại: {fail_count}")
+            else:
+                self.log(f"\n⛔ CHƯƠNG TRÌNH KẾT THÚC CÓ LỖI (Vui lòng kiểm tra file template).")
                 
-                output_file = os.path.join(output_dir, filename)
-                doc.save(output_file)
-                self.log(f"SUCCESS: Saved {filename}")
-                success_count += 1
-
-            self.log(f"--- Generation Complete! Successfully created {success_count} files. ---")
         except Exception as e:
-            self.log(f"ERROR: {str(e)}")
+            self.log(f"❌ LỖI NGHIÊM TRỌNG: {str(e)}")
         finally:
-            self.btn_generate.configure(state="normal", text="Generate Documents")
+            self.after(0, lambda: self.btn_generate.configure(state="normal", text="🚀 Bắt đầu Khởi tạo Documents"))
 
 if __name__ == "__main__":
     app = App()

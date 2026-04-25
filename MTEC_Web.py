@@ -6,15 +6,47 @@ import pandas as pd
 from docxtpl import DocxTemplate, RichText
 from docx import Document
 import streamlit as st
+import streamlit.components.v1 as components
 from datetime import datetime
 
 # --- Cấu hình trang Web ---
 st.set_page_config(
-    page_title="MTEC Document Generator",
+    page_title="MTEC Document Generator | Tự động Excel sang Word",
     page_icon="branding/mtec_logo.svg",
     layout="centered",
     initial_sidebar_state="expanded"
 )
+
+# --- Tối ưu SEO ---
+# Dùng JS thủ thuật để đẩy tag Meta lên Parent Document của Streamlit
+components.html("""
+<script>
+    const setMeta = (attr, key, value) => {
+        let meta = window.parent.document.querySelector(`meta[${attr}="${key}"]`);
+        if (!meta) {
+            meta = window.parent.document.createElement('meta');
+            meta.setAttribute(attr, key);
+            window.parent.document.head.appendChild(meta);
+        }
+        meta.setAttribute('content', value);
+    };
+    
+    // Khai báo các thẻ meta cho công cụ tìm kiếm
+    setMeta('name', 'description', 'MTEC Document Generator - Trình tạo văn bản hàng loạt. Giải pháp tự động hóa tạo hàng trăm file Word (.docx) từ dữ liệu Excel/CSV cực kỳ nhanh chóng và chính xác.');
+    setMeta('name', 'keywords', 'MTEC, document generator, Mail Merge, trộn thư Word, Excel to Word, tự động tạo file Word, làm hồ sơ tự động, xuất file Word hàng loạt, RPA văn phòng');
+    setMeta('name', 'author', 'MTEC');
+    setMeta('name', 'robots', 'index, follow');
+    
+    // Khai báo cho Open Graph / Mạng xã hội FB, Zalo...
+    setMeta('property', 'og:title', 'MTEC Document Generator | Tạo Word tự động từ Excel');
+    setMeta('property', 'og:description', 'Tự động tạo hàng trăm file Word từ 1 file Excel và 1 file mẫu dễ dàng, miễn phí.');
+    setMeta('property', 'og:url', 'https://mtec-profile.streamlit.app/');
+    setMeta('property', 'og:type', 'website');
+    
+    // Gắn thuộc tính lang để bot biết đây là trang đa ngôn ngữ (mặc định ưu tiên hiển thị tiếng Việt)
+    window.parent.document.documentElement.lang = 'vi';
+</script>
+""", height=0, width=0)
 
 # --- Trạng thái ngôn ngữ và giao diện ---
 if 'lang' not in st.session_state:
@@ -208,10 +240,13 @@ with st.sidebar:
 
 try:
     st.image("branding/mtec-banner-fb-2026.png", use_container_width=True)
+    # Ẩn thẻ h1 để bot Google bot đọc được tiêu đề chính thay vì bỏ qua tag quan trọng này
+    st.markdown(f"<h1 style='display: none;'>{t['title']}</h1>", unsafe_allow_html=True)
 except Exception:
     st.title(t['title'])
 
-st.markdown(f"<h3 style='text-align: center; color: #ffc20e;'>{t['subtitle']}</h3>", unsafe_allow_html=True)
+# Dùng h2 thay vì h3 để đảm bảo cấu trúc header hierarchy (SEO)
+st.markdown(f"<h2 style='text-align: center; color: #ffc20e; font-size: 1.5rem;'>{t['subtitle']}</h2>", unsafe_allow_html=True)
 st.divider()
 
 # Bước 1: Upload File

@@ -4,6 +4,7 @@ import zipfile
 import re
 import pandas as pd
 from docxtpl import DocxTemplate, RichText
+from docx import Document
 import streamlit as st
 from datetime import datetime
 
@@ -11,20 +12,55 @@ from datetime import datetime
 st.set_page_config(
     page_title="MTEC Document Generator",
     page_icon="branding/mtec_logo.svg",
-    layout="centered"
+    layout="centered",
+    initial_sidebar_state="expanded"
 )
+
+# --- Trạng thái ngôn ngữ và giao diện ---
+if 'lang' not in st.session_state:
+    st.session_state.lang = 'vi'
+
+texts = {
+    'vi': {
+        'title': "📄 MTEC - Trình Tạo Document Hàng Loạt",
+        'subtitle': "Giải pháp tự động hóa trích xuất và khởi tạo tài liệu hàng loạt chuyên nghiệp.",
+        'guide': "### 📋 Hướng dẫn sử dụng\n1. Tải lên file **Excel/CSV** chứa danh sách đăng ký.\n2. Tải lên file **Template Word (.docx)** chứa các trường như `{{ ho_ten }}`.\n3. Chọn dòng dữ liệu ở phần xem trước để kiểm tra file mấu.\n4. Sang tab xuất hàng loạt, nhấn **Bắt đầu** để lấy file `ZIP`.",
+        'custom_output': "### ⚙️ Tùy chỉnh đầu ra",
+        'step1': "1️⃣ Tải lên dữ liệu & Template",
+        'upload_data': "📁 Chọn file Excel/CSV",
+        'upload_template': "📝 Chọn Word Template",
+        'preview_tab': "👁️ Xem trước 1 File",
+        'generate_tab': "🚀 Xuất hàng loạt ZIP"
+    },
+    'en': {
+        'title': "📄 MTEC - Mass Document Generator",
+        'subtitle': "Professional automated solution for data extraction and mass document generation.",
+        'guide': "### 📋 Quick Guide\n1. Upload your **Excel/CSV** data file.\n2. Upload **Word Template (.docx)** containing variables like `{{ ho_ten }}`.\n3. Preview mapping on single row.\n4. Go to batch generation and click **Start** to get `.zip`.",
+        'custom_output': "### ⚙️ Output Configuration",
+        'step1': "1️⃣ Upload Data & Template",
+        'upload_data': "📁 Select Excel/CSV file",
+        'upload_template': "📝 Select Word Template",
+        'preview_tab': "👁️ Preview 1 File",
+        'generate_tab': "🚀 Batch Generate ZIP"
+    }
+}
+t = texts[st.session_state.lang]
 
 # --- CSS Branding ---
 st.markdown("""
 <style>
-    /* Nền chính màu xanh navy MTEC */
-    [data-testid="stAppViewContainer"] {
-        background-color: #061932;
-        color: #ffffff;
+    /* Hoạt cảnh hướng người dùng mở sidebar trên mobile */
+    @media (max-width: 768px) {
+        [data-testid="collapsedControl"] {
+            animation: pulse-sidebar 2s infinite;
+            border-radius: 50%;
+            background-color: rgba(255, 194, 14, 0.3);
+        }
     }
-    
-    [data-testid="stHeader"] {
-        background-color: #061932;
+    @keyframes pulse-sidebar {
+        0% { box-shadow: 0 0 0 0 rgba(255, 194, 14, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(255, 194, 14, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(255, 194, 14, 0); }
     }
 
     /* Nhấn mạnh các nút bấm chính sang màu Vàng / Xanh sáng */
@@ -46,18 +82,10 @@ st.markdown("""
     [data-testid="stFileUploadDropzone"] {
         border-radius: 12px;
         border: 2px dashed #1a3c6d;
-        background-color: #0a1f3f;
         transition: border 0.3s ease;
     }
     [data-testid="stFileUploadDropzone"]:hover {
         border: 2px dashed #ffc20e;
-    }
-
-    /* Expander (Xem trước dữ liệu) */
-    [data-testid="stExpander"] {
-        border-radius: 10px;
-        border: 1px solid #1a3c6d;
-        background-color: #0a1f3f;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -167,42 +195,34 @@ def process_mtec_data_v2(df):
 # --- Giao diện Web ---
 # Sidebar
 with st.sidebar:
+    st.selectbox("🌍 Ngôn ngữ / Language", ['vi', 'en'], index=0 if st.session_state.lang == 'vi' else 1, key='lang_selector', on_change=lambda: st.session_state.update(lang=st.session_state.lang_selector))
+    t = texts[st.session_state.lang]
+    
     try:
         st.image("branding/mtec_logo.png", width=150)
     except:
         st.markdown("## 🛡️ MTEC TOOLS")
-    st.markdown("### 📋 Hướng dẫn sử dụng")
-    st.markdown("""
-    1. Tải lên file **Excel/CSV** chứa danh sách đăng ký.
-    2. Tải lên file **Template Word (.docx)** chứa các trường như `{{ ho_ten }}`.
-    3. Chọn dòng dữ liệu ở phần xem trước để kiểm tra file mấu.
-    4. Sang tab xuất hàng loạt, nhấn **Bắt đầu** để lấy file `ZIP`.
-    """)
+        
+    st.markdown(t['guide'])
     st.divider()
-    st.markdown("### ⚙️ Tùy chỉnh đầu ra")
-    file_naming_convention = st.text_input(
-        "Format Tên File (Bỏ đuôi .docx):",
-        value="HOSO_{mssv}_{ho_ten}",
-        help="Dùng các biến {mssv}, {ho_ten}. Ví dụ: MTEC_{mssv}"
-    )
 
 try:
     st.image("branding/mtec-banner-fb-2026.png", use_container_width=True)
 except Exception:
-    st.title("📄 MTEC - Trình Tạo Document Hàng Loạt")
+    st.title(t['title'])
 
-st.markdown("<h3 style='text-align: center; color: #ffc20e;'>Tạo hàng trăm file Word từ 1 file Excel/CSV và 1 file Mẫu (.docx) dễ dàng.</h3>", unsafe_allow_html=True)
+st.markdown(f"<h3 style='text-align: center; color: #ffc20e;'>{t['subtitle']}</h3>", unsafe_allow_html=True)
 st.divider()
 
 # Bước 1: Upload File
-st.subheader("1️⃣ Tải lên dữ liệu & Template")
+st.subheader(t['step1'])
 col1, col2 = st.columns(2)
 
 with col1:
-    excel_file = st.file_uploader("📁 Chọn file Excel/CSV danh sách", type=['csv', 'xlsx'])
+    excel_file = st.file_uploader(t['upload_data'], type=['csv', 'xlsx'])
 
 with col2:
-    template_file = st.file_uploader("📝 Chọn Word Template", type=['docx'])
+    template_file = st.file_uploader(t['upload_template'], type=['docx'])
 
 if excel_file and template_file:
     with st.spinner("⏳ Đang đọc dữ liệu..."):
@@ -215,6 +235,17 @@ if excel_file and template_file:
             st.success(f"✅ Đã tải file thành công! Tổng cộng **{len(df)}** dòng dữ liệu.")
             with st.expander("🔎 Xem trước dữ liệu Excel/CSV"):
                 st.dataframe(df.head(5), use_container_width=True)
+                
+            # Tuỳ chỉnh tên file trong sidebar sau khi có df
+            with st.sidebar:
+                st.markdown(t['custom_output'])
+                available_cols = list(df.columns)
+                selected_name_parts = st.multiselect(
+                    "Định dạng tên file tải về (Kéo thả/chọn để tuỳ chỉnh):",
+                    options=available_cols,
+                    default=[available_cols[0]] if available_cols else []
+                )
+                custom_text = st.text_input("Tiếp ngữ/Tiền tố (vd: MTEC_HOSO_):", value="")
 
         except Exception as e:
             st.error(f"❌ Lỗi đọc dữ liệu: {e}")
@@ -272,6 +303,24 @@ if excel_file and template_file:
                 doc.save(doc_io)
                 
                 st.success(f"🎉 Đã tạo thành công bản xem trước cho **'{clean_context_for_json.get('ho_ten', 'Unknown')}'**.")
+                
+                # Preview directly on web
+                doc_io.seek(0)
+                try:
+                    import mammoth
+                    result = mammoth.convert_to_html(doc_io)
+                    html = result.value
+                    with st.container(border=True):
+                        st.markdown("<h4 style='text-align: center;'>📄 Bản Xem Trước (Preview)</h4>", unsafe_allow_html=True)
+                        st.components.v1.html(html, height=600, scrolling=True)
+                except ImportError:
+                    doc_io.seek(0)
+                    doc_preview = Document(doc_io)
+                    preview_text = '\\n'.join([p.text for p in doc_preview.paragraphs if p.text.strip()])
+                    with st.container(border=True):
+                        st.markdown("<h4 style='text-align: center;'>📄 Bản Xem Trước (Preview Text)</h4>", unsafe_allow_html=True)
+                        st.text_area("", value=preview_text, height=400, disabled=True)
+                        
                 st.download_button(
                     label="📥 Tải xuống File Xem Trước",
                     data=doc_io.getvalue(),
@@ -309,16 +358,17 @@ if excel_file and template_file:
                         doc = DocxTemplate(template_file)
                         doc.render(context)
                         
-                        mssv = context.get('mssv', 'Unknown_MSSV')
-                        ho_ten = context.get('ho_ten', f'Unknown_Name_{index}')
-                        
-                        # Generate name based on file_naming_convention provided in sidebar
                         try:
-                            # Safely format name ignoring key errors if user typed wrong placeholder
-                            filename_base = file_naming_convention.format(mssv=mssv, ho_ten=ho_ten)
-                        except:
-                            filename_base = f"HOSO_{mssv}_{ho_ten}"
+                            if not selected_name_parts and not custom_text:
+                                filename_base = f"HOSO_{index}"
+                            else:
+                                name_parts = [str(row.get(col, "")) for col in selected_name_parts]
+                                filename_base = f"{custom_text}{'_'.join(name_parts)}"
+                        except Exception:
+                            filename_base = f"HOSO_{index}"
                             
+                        # Clean unusual characters
+                        filename_base = re.sub(r'[\\/*?:"<>|]', "", filename_base)
                         filename = f"{filename_base}.docx".replace(" ", "_")
                         
                         doc_io = io.BytesIO()

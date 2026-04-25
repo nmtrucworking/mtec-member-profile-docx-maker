@@ -227,6 +227,31 @@ def process_mtec_data_v2(df):
 # --- Giao diện Web ---
 # Sidebar
 with st.sidebar:
+    import builtins
+    
+    # Toggle Dark Mode thông qua CSS
+    dark_mode = st.toggle("🌙 Giao diện tối (Dark Mode)", value=st.session_state.get('dark_mode', True), key="dark_mode_toggle")
+    if dark_mode:
+        st.session_state.dark_mode = True
+        st.markdown('''
+        <style>
+            [data-testid="stAppViewContainer"] { background-color: #0e1117; color: #fafafa; }
+            [data-testid="stSidebar"] { background-color: #262730; color: #fafafa; }
+            .stMarkdown, .stText, p, span, label { color: #fafafa !important; }
+            h1, h2, h3, h4, h5, h6 { color: #ffc20e !important; }
+        </style>
+        ''', unsafe_allow_html=True)
+    else:
+        st.session_state.dark_mode = False
+        st.markdown('''
+        <style>
+            [data-testid="stAppViewContainer"] { background-color: #ffffff; color: #111111; }
+            [data-testid="stSidebar"] { background-color: #f0f2f6; color: #111111; }
+            .stMarkdown, .stText, p, span, label { color: #111111 !important; }
+            h1, h2, h3, h4, h5, h6 { color: #1a3c6d !important; }
+        </style>
+        ''', unsafe_allow_html=True)
+        
     st.selectbox("🌍 Ngôn ngữ / Language", ['vi', 'en'], index=0 if st.session_state.lang == 'vi' else 1, key='lang_selector', on_change=lambda: st.session_state.update(lang=st.session_state.lang_selector))
     t = texts[st.session_state.lang]
     
@@ -274,13 +299,17 @@ if excel_file and template_file:
             # Tuỳ chỉnh tên file trong sidebar sau khi có df
             with st.sidebar:
                 st.markdown(t['custom_output'])
-                available_cols = list(df.columns)
-                selected_name_parts = st.multiselect(
-                    "Định dạng tên file tải về (Kéo thả/chọn để tuỳ chỉnh):",
-                    options=available_cols,
-                    default=[available_cols[0]] if available_cols else []
+                st.info("💡 Điền tên file theo mẫu. Dùng `{Tên Cột}` để chèn dữ liệu tự động. Ví dụ: `MTEC_{Mã số sinh viên (MSSV)}_{Họ và tên đầy đủ}`")
+                
+                # Hiển thị một số cột làm gợi ý
+                sample_cols = [f"`{{{c}}}`" for c in df.columns[:5]]
+                st.caption(f"Các cột có sẵn (VD): {', '.join(sample_cols)}...")
+                
+                default_name = "{Mã số sinh viên (MSSV)}_{Họ và tên đầy đủ}" if "Mã số sinh viên (MSSV)" in df.columns else "HOSO_{index}"
+                custom_filename_pattern = st.text_input(
+                    "Định dạng tên file tải về:",
+                    value=default_name
                 )
-                custom_text = st.text_input("Tiếp ngữ/Tiền tố (vd: MTEC_HOSO_):", value="")
 
         except Exception as e:
             st.error(f"❌ Lỗi đọc dữ liệu: {e}")
@@ -331,6 +360,7 @@ if excel_file and template_file:
                 st.json(clean_context_for_json, expanded=False)
 
             if generate_preview:
+                template_file.seek(0)
                 doc = DocxTemplate(template_file)
                 doc.render(context)
                 
@@ -339,22 +369,56 @@ if excel_file and template_file:
                 
                 st.success(f"🎉 Đã tạo thành công bản xem trước cho **'{clean_context_for_json.get('ho_ten', 'Unknown')}'**.")
                 
-                # Preview directly on web
+                # Preview via PDF if possible, or fallback to mammoth/text
                 doc_io.seek(0)
                 try:
-                    import mammoth
-                    result = mammoth.convert_to_html(doc_io)
-                    html = result.value
-                    with st.container(border=True):
-                        st.markdown("<h4 style='text-align: center;'>📄 Bản Xem Trước (Preview)</h4>", unsafe_allow_html=True)
-                        st.components.v1.html(html, height=600, scrolling=True)
-                except ImportError:
+                    import tempfile
+                    import base64
+                    import platform
+                    
+                    if os.name == 'nt':
+                        from docx2pdf import convert
+                        
+                        temp_dir = tempfile.gettempdir()
+                        doc_path = os.path.join(temp_dir, f"preview_{int(datetime.now().timestamp())}.docx")
+                        pdf_path = doc_path.replace(".docx", ".pdf")
+                        
+                        with open(doc_path, "wb") as f:
+                            f.write(doc_io.getvalue())
+                            
+                        with st.spinner("Đang kết xuất PDF để preview..."):
+                            convert(doc_path, pdf_path)
+                            
+                        if os.path.exists(pdf_path):
+                            with open(pdf_path, "rb") as f:
+                                base64_pdf = base64.b64encode(f.read()).decode('utf-8')
+                            pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="800" type="application/pdf"></iframe>'
+                            
+                            with st.container(border=True):
+                                st.markdown("<h4 style='text-align: center;'>📄 Bản Xem Trước (PDF format)</h4>", unsafe_allow_html=True)
+                                st.markdown(pdf_display, unsafe_allow_html=True)
+                                
+                        else:
+                            raise Exception("doc2pdf failed")
+                    else:
+                        raise ImportError("PDF Convert only supported natively on Windows with Word installed.")
+                except Exception as e:
+                    # Fallback to mammoth.convert_to_html
                     doc_io.seek(0)
-                    doc_preview = Document(doc_io)
-                    preview_text = '\\n'.join([p.text for p in doc_preview.paragraphs if p.text.strip()])
-                    with st.container(border=True):
-                        st.markdown("<h4 style='text-align: center;'>📄 Bản Xem Trước (Preview Text)</h4>", unsafe_allow_html=True)
-                        st.text_area("", value=preview_text, height=400, disabled=True)
+                    try:
+                        import mammoth
+                        result = mammoth.convert_to_html(doc_io)
+                        html = result.value
+                        with st.container(border=True):
+                            st.markdown("<h4 style='text-align: center;'>📄 Bản Xem Trước (HTML Fallback)</h4>", unsafe_allow_html=True)
+                            st.components.v1.html(html, height=600, scrolling=True)
+                    except ImportError:
+                        doc_io.seek(0)
+                        doc_preview = Document(doc_io)
+                        preview_text = '\\n'.join([p.text for p in doc_preview.paragraphs if p.text.strip()])
+                        with st.container(border=True):
+                            st.markdown("<h4 style='text-align: center;'>📄 Bản Xem Trước (Preview Text)</h4>", unsafe_allow_html=True)
+                            st.text_area("", value=preview_text, height=400, disabled=True)
                         
                 st.download_button(
                     label="📥 Tải xuống File Xem Trước",
@@ -390,15 +454,18 @@ if excel_file and template_file:
                             if field in context:
                                 context[field] = format_[field](context[field])
 
+                        template_file.seek(0)
                         doc = DocxTemplate(template_file)
                         doc.render(context)
                         
+                        # Xử lý tên file tuỳ chỉnh
                         try:
-                            if not selected_name_parts and not custom_text:
-                                filename_base = f"HOSO_{index}"
-                            else:
-                                name_parts = [str(row.get(col, "")) for col in selected_name_parts]
-                                filename_base = f"{custom_text}{'_'.join(name_parts)}"
+                            # Chuyển đổi định dạng cho an toàn 
+                            safe_context = {str(k): (str(v.text) if hasattr(v, 'text') else str(v)) for k, v in context.items()}
+                            filename_base = custom_filename_pattern
+                            for k, v in safe_context.items():
+                                filename_base = filename_base.replace(f"{{{k}}}", str(v))
+                            filename_base = filename_base.replace("{index}", str(index))
                         except Exception:
                             filename_base = f"HOSO_{index}"
                             

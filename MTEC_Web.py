@@ -227,28 +227,33 @@ def process_mtec_data_v2(df):
 # --- Giao diện Web ---
 # Sidebar
 with st.sidebar:
-    import builtins
-    
-    # Toggle Dark Mode thông qua CSS
-    dark_mode = st.toggle("🌙 Giao diện tối (Dark Mode)", value=st.session_state.get('dark_mode', True), key="dark_mode_toggle")
+    # Toggle Dark Mode thông qua CSS Injection chuyên sâu
+    dark_mode = st.toggle("🌙 Giao diện tối / Dark Mode", value=st.session_state.get('dark_mode', True), key="dark_mode_toggle")
     if dark_mode:
         st.session_state.dark_mode = True
         st.markdown('''
         <style>
-            [data-testid="stAppViewContainer"] { background-color: #0e1117; color: #fafafa; }
-            [data-testid="stSidebar"] { background-color: #262730; color: #fafafa; }
-            .stMarkdown, .stText, p, span, label { color: #fafafa !important; }
+            :root { color-scheme: dark; }
+            [data-testid="stAppViewContainer"] { background-color: #0E1117; color: #FAFAFA; }
+            [data-testid="stSidebar"] { background-color: #262730; color: #FAFAFA; }
+            [data-testid="stHeader"] { background-color: transparent; }
+            .stMarkdown, .stText, p, span, label, div { color: #FAFAFA !important; }
             h1, h2, h3, h4, h5, h6 { color: #ffc20e !important; }
+            .stDataFrame, [data-testid="stDataFrame"] { filter: invert(0.9) hue-rotate(180deg); }
         </style>
         ''', unsafe_allow_html=True)
     else:
         st.session_state.dark_mode = False
         st.markdown('''
         <style>
-            [data-testid="stAppViewContainer"] { background-color: #ffffff; color: #111111; }
-            [data-testid="stSidebar"] { background-color: #f0f2f6; color: #111111; }
+            :root { color-scheme: light; }
+            [data-testid="stAppViewContainer"] { background-color: #FFFFFF; color: #111111; }
+            [data-testid="stSidebar"] { background-color: #F0F2F6; color: #111111; }
+            [data-testid="stHeader"] { background-color: transparent; }
             .stMarkdown, .stText, p, span, label { color: #111111 !important; }
             h1, h2, h3, h4, h5, h6 { color: #1a3c6d !important; }
+            .stDataFrame, [data-testid="stDataFrame"] { filter: none; }
+            [data-testid="stSidebar"] div, [data-testid="stSidebar"] span { color: #111111 !important; }
         </style>
         ''', unsafe_allow_html=True)
         
@@ -298,18 +303,33 @@ if excel_file and template_file:
                 
             # Tuỳ chỉnh tên file trong sidebar sau khi có df
             with st.sidebar:
-                st.markdown(t['custom_output'])
-                st.info("💡 Điền tên file theo mẫu. Dùng `{Tên Cột}` để chèn dữ liệu tự động. Ví dụ: `MTEC_{Mã số sinh viên (MSSV)}_{Họ và tên đầy đủ}`")
+                st.markdown("### ⚙️ Tuỳ chỉnh Tên File")
+                st.info("💡 Chọn các cột và cách ghép để tạo tên file tự động.")
                 
-                # Hiển thị một số cột làm gợi ý
-                sample_cols = [f"`{{{c}}}`" for c in df.columns[:5]]
-                st.caption(f"Các cột có sẵn (VD): {', '.join(sample_cols)}...")
-                
-                default_name = "{Mã số sinh viên (MSSV)}_{Họ và tên đầy đủ}" if "Mã số sinh viên (MSSV)" in df.columns else "HOSO_{index}"
-                custom_filename_pattern = st.text_input(
-                    "Định dạng tên file tải về:",
-                    value=default_name
+                col_prefix, col_sep = st.columns([2, 1])
+                with col_prefix:
+                    custom_prefix = st.text_input("Tiền tố (VD: MTEC_)", value="MTEC_")
+                with col_sep:
+                    custom_sep = st.text_input("Dấu cách", value="-")
+                    
+                default_cols = []
+                if "Mã số sinh viên (MSSV)" in df.columns:
+                    default_cols.append("Mã số sinh viên (MSSV)")
+                if "Họ và tên đầy đủ" in df.columns:
+                    default_cols.append("Họ và tên đầy đủ")
+                    
+                selected_name_parts = st.multiselect(
+                    "Chọn các cột để ghép tên:",
+                    options=list(df.columns),
+                    default=default_cols if default_cols else [df.columns[0]]
                 )
+                
+                custom_suffix = st.text_input("Hậu tố (VD: _Profile)", value="")
+                
+                # Preview sample filename
+                sample_parts = [str(df.iloc[0].get(c, "")) for c in selected_name_parts] if selected_name_parts else ["HOSO_0"]
+                sample_name = f"{custom_prefix}{custom_sep.join(sample_parts)}{custom_suffix}.docx"
+                st.caption(f"📝 Mẫu hiển thị: `{sample_name}`")
 
         except Exception as e:
             st.error(f"❌ Lỗi đọc dữ liệu: {e}")
@@ -377,8 +397,10 @@ if excel_file and template_file:
                     import platform
                     
                     if os.name == 'nt':
+                        import pythoncom
                         from docx2pdf import convert
                         
+                        pythoncom.CoInitialize() # Khởi tạo COM cho thread của Streamlit
                         temp_dir = tempfile.gettempdir()
                         doc_path = os.path.join(temp_dir, f"preview_{int(datetime.now().timestamp())}.docx")
                         pdf_path = doc_path.replace(".docx", ".pdf")
@@ -386,24 +408,25 @@ if excel_file and template_file:
                         with open(doc_path, "wb") as f:
                             f.write(doc_io.getvalue())
                             
-                        with st.spinner("Đang kết xuất PDF để preview..."):
+                        with st.spinner("Đang kết xuất PDF để preview (Cần có MS Word cài trên máy)..."):
                             convert(doc_path, pdf_path)
                             
                         if os.path.exists(pdf_path):
                             with open(pdf_path, "rb") as f:
                                 base64_pdf = base64.b64encode(f.read()).decode('utf-8')
-                            pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="800" type="application/pdf"></iframe>'
+                            pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}#toolbar=0" width="100%" height="800" type="application/pdf"></iframe>'
                             
                             with st.container(border=True):
-                                st.markdown("<h4 style='text-align: center;'>📄 Bản Xem Trước (PDF format)</h4>", unsafe_allow_html=True)
+                                st.markdown("<h4 style='text-align: center;'>📄 Bản Xem Trước (Đã Export PDF)</h4>", unsafe_allow_html=True)
                                 st.markdown(pdf_display, unsafe_allow_html=True)
                                 
                         else:
-                            raise Exception("doc2pdf failed")
+                            raise Exception("Không tìm thấy file PDF sau khi convert.")
                     else:
-                        raise ImportError("PDF Convert only supported natively on Windows with Word installed.")
+                        raise ImportError("docx2pdf chỉ hỗ trợ native trên Windows với MS Word.")
                 except Exception as e:
                     # Fallback to mammoth.convert_to_html
+                    st.warning(f"Tính năng Preview PDF không khả dụng: {str(e)}. Yêu cầu MS Office cài đặt và mở được trên máy của bạn.")
                     doc_io.seek(0)
                     try:
                         import mammoth
@@ -460,12 +483,12 @@ if excel_file and template_file:
                         
                         # Xử lý tên file tuỳ chỉnh
                         try:
-                            # Chuyển đổi định dạng cho an toàn 
-                            safe_context = {str(k): (str(v.text) if hasattr(v, 'text') else str(v)) for k, v in context.items()}
-                            filename_base = custom_filename_pattern
-                            for k, v in safe_context.items():
-                                filename_base = filename_base.replace(f"{{{k}}}", str(v))
-                            filename_base = filename_base.replace("{index}", str(index))
+                            if not selected_name_parts:
+                                filename_base = f"HOSO_{index}"
+                            else:
+                                name_parts = [str(row.get(col, "")) for col in selected_name_parts]
+                                combined = custom_sep.join(name_parts)
+                                filename_base = f"{custom_prefix}{combined}{custom_suffix}"
                         except Exception:
                             filename_base = f"HOSO_{index}"
                             

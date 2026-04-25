@@ -9,10 +9,37 @@ from datetime import datetime
 
 # --- Cấu hình trang Web ---
 st.set_page_config(
-    page_title="MTEC Word Gen Web",
-    page_icon="📄",
+    page_title="MTEC Document Generator",
+    page_icon="branding/mtec_logo.svg",
     layout="centered"
 )
+
+# --- CSS Branding ---
+st.markdown("""
+<style>
+    /* Nền chính màu xanh navy MTEC */
+    [data-testid="stAppViewContainer"] {
+        background-color: #061932;
+        color: #ffffff;
+    }
+    
+    [data-testid="stHeader"] {
+        background-color: #061932;
+    }
+
+    /* Nhấn mạnh các nút bấm chính sang màu Vàng / Xanh sáng */
+    button[kind="primary"] {
+        background-color: #ffc20e !important;
+        color: #061932 !important;
+        border: none;
+        font-weight: bold;
+    }
+    button[kind="primary"]:hover {
+        background-color: #ffd859 !important;
+        color: #061932 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # --- Data Formatting Functions ---
 def format_ho_ten(name):
@@ -117,7 +144,11 @@ def process_mtec_data_v2(df):
     return df.fillna("")
 
 # --- Giao diện Web ---
-st.title("📄 MTEC - Trình Tạo Document Hàng Loạt")
+try:
+    st.image("branding/mtec-banner-fb-2026.png", use_container_width=True)
+except Exception:
+    st.title("📄 MTEC - Trình Tạo Document Hàng Loạt")
+
 st.markdown("Tạo hàng trăm file Word từ 1 file Excel/CSV và 1 file Mẫu (.docx) dễ dàng.")
 
 st.divider()

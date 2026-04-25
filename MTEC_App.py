@@ -5,10 +5,11 @@ import re
 from docxtpl import DocxTemplate, RichText
 import customtkinter as ctk
 from customtkinter import filedialog
+from PIL import Image
 
-# Set theme and colors for a modern look
-ctk.set_appearance_mode("System")  # Modes: "System" (standard), "Dark", "Light"
-ctk.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue"
+# Cấu hình branding (App Desktop)
+ctk.set_appearance_mode("Dark")  # Đổi sang Dark Mode cho hợp branding xanh navy
+ctk.set_default_color_theme("dark-blue")  
 
 # --- Data Formatting Functions ---
 def format_ho_ten(name):
@@ -118,39 +119,51 @@ class App(ctk.CTk):
         self.title("MTEC Hồ Sơ Generator")
         self.geometry("700x520")
         self.grid_columnconfigure(1, weight=1)
-        self.grid_rowconfigure(4, weight=1)
+        self.grid_rowconfigure(5, weight=1) # Dời grid
 
-        self.lbl_title = ctk.CTkLabel(self, text="MTEC Document Generator", font=ctk.CTkFont(size=20, weight="bold"))
-        self.lbl_title.grid(row=0, column=0, columnspan=3, padx=20, pady=(20, 10))
+        # Thêm Banner ảnh
+        try:
+            banner_image = ctk.CTkImage(
+                light_image=Image.open("branding/mtec-banner-fb-2026.png"),
+                dark_image=Image.open("branding/mtec-banner-fb-2026.png"),
+                size=(350, 130)  # Thu nhỏ tỉ lệ
+            )
+            self.lbl_banner = ctk.CTkLabel(self, image=banner_image, text="")
+            self.lbl_banner.grid(row=0, column=0, columnspan=3, pady=(10, 0))
+            self.lbl_title = ctk.CTkLabel(self, text="MTEC Document Generator", font=ctk.CTkFont(size=18, weight="bold"), text_color="#ffc20e")
+            self.lbl_title.grid(row=1, column=0, columnspan=3, padx=20, pady=(5, 10))
+        except Exception:
+            self.lbl_title = ctk.CTkLabel(self, text="MTEC Document Generator", font=ctk.CTkFont(size=20, weight="bold"), text_color="#ffc20e")
+            self.lbl_title.grid(row=0, column=0, columnspan=3, padx=20, pady=(20, 10))
 
         self.lbl_excel = ctk.CTkLabel(self, text="Data File (.csv, .xlsx):")
-        self.lbl_excel.grid(row=1, column=0, padx=20, pady=10, sticky="w")
+        self.lbl_excel.grid(row=2, column=0, padx=20, pady=5, sticky="w")
         self.ent_excel = ctk.CTkEntry(self, placeholder_text="Select your data source...")
-        self.ent_excel.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
-        self.btn_excel = ctk.CTkButton(self, text="Browse", width=80, command=self.browse_excel)
-        self.btn_excel.grid(row=1, column=2, padx=20, pady=10)
+        self.ent_excel.grid(row=2, column=1, padx=10, pady=5, sticky="ew")
+        self.btn_excel = ctk.CTkButton(self, text="Browse", width=80, fg_color="#ffc20e", text_color="#061932", hover_color="#ffd859", command=self.browse_excel)
+        self.btn_excel.grid(row=2, column=2, padx=20, pady=5)
 
         self.lbl_template = ctk.CTkLabel(self, text="Word Template (.docx):")
-        self.lbl_template.grid(row=2, column=0, padx=20, pady=10, sticky="w")
+        self.lbl_template.grid(row=3, column=0, padx=20, pady=5, sticky="w")
         self.ent_template = ctk.CTkEntry(self, placeholder_text="Select your .docx template...")
-        self.ent_template.grid(row=2, column=1, padx=10, pady=10, sticky="ew")
-        self.btn_template = ctk.CTkButton(self, text="Browse", width=80, command=self.browse_template)
-        self.btn_template.grid(row=2, column=2, padx=20, pady=10)
+        self.ent_template.grid(row=3, column=1, padx=10, pady=5, sticky="ew")
+        self.btn_template = ctk.CTkButton(self, text="Browse", width=80, fg_color="#ffc20e", text_color="#061932", hover_color="#ffd859", command=self.browse_template)
+        self.btn_template.grid(row=3, column=2, padx=20, pady=5)
 
         self.lbl_output = ctk.CTkLabel(self, text="Output Folder:")
-        self.lbl_output.grid(row=3, column=0, padx=20, pady=10, sticky="w")
+        self.lbl_output.grid(row=4, column=0, padx=20, pady=5, sticky="w")
         self.ent_output = ctk.CTkEntry(self, placeholder_text="Select destination folder...")
-        self.ent_output.grid(row=3, column=1, padx=10, pady=10, sticky="ew")
-        self.btn_output = ctk.CTkButton(self, text="Browse", width=80, command=self.browse_output)
-        self.btn_output.grid(row=3, column=2, padx=20, pady=10)
+        self.ent_output.grid(row=4, column=1, padx=10, pady=5, sticky="ew")
+        self.btn_output = ctk.CTkButton(self, text="Browse", width=80, fg_color="#ffc20e", text_color="#061932", hover_color="#ffd859", command=self.browse_output)
+        self.btn_output.grid(row=4, column=2, padx=20, pady=5)
 
-        self.log_box = ctk.CTkTextbox(self, corner_radius=8)
-        self.log_box.grid(row=4, column=0, columnspan=3, padx=20, pady=10, sticky="nsew")
+        self.log_box = ctk.CTkTextbox(self, corner_radius=8, fg_color="#102a4f", text_color="white")
+        self.log_box.grid(row=5, column=0, columnspan=3, padx=20, pady=10, sticky="nsew")
         self.log_box.insert("0.0", "Logs and progress will appear here...\n")
         self.log_box.configure(state="disabled")
 
-        self.btn_generate = ctk.CTkButton(self, text="Generate Documents", height=45, font=ctk.CTkFont(size=14, weight="bold"), command=self.start_generation)
-        self.btn_generate.grid(row=5, column=0, columnspan=3, padx=20, pady=(10, 20), sticky="ew")
+        self.btn_generate = ctk.CTkButton(self, text="Generate Documents", height=45, font=ctk.CTkFont(size=14, weight="bold"), fg_color="#ffc20e", text_color="#061932", hover_color="#ffd859", command=self.start_generation)
+        self.btn_generate.grid(row=6, column=0, columnspan=3, padx=20, pady=(10, 20), sticky="ew")
 
     def log(self, message):
         self.log_box.configure(state="normal")
